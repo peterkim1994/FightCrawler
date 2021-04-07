@@ -10,6 +10,7 @@ package Models;
  * @author peter
  */
 public class Fighter {
+    private int id;
     public String name;
     public String stance;
     public int reach;
@@ -20,5 +21,12 @@ public class Fighter {
     
     public Fighter(String name){
         this.name = name;
+    }
+    
+    public void setId(int id){
+        this.id = id;
+    }
+    public int getId(){
+        return id;
     }
 }

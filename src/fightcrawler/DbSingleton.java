@@ -56,7 +56,7 @@ public class DbSingleton {
         }
     }
 
-    public int recordEvent(UFCEvent event) {
+    public void recordEvent(UFCEvent event) {
         int eventId = getEventId(event.date);
         if (eventId == 0) {
             try {
@@ -68,11 +68,11 @@ public class DbSingleton {
             } catch (SQLException ex) {
                 Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
             }
-        }
-        return eventId;
+        }  
+        event.setId(eventId);
     }
 
-    public int insertFighter(Fighter fighter) {
+    public void insertFighter(Fighter fighter) {
         int fighterId = getFighterId(fighter);
         try {
             if (fighterId == 0) {
@@ -85,12 +85,12 @@ public class DbSingleton {
                 insertFighter.setString(7, fighter.country);
                 insertFighter.executeUpdate();
                 fighterId = getFighterId(fighter);
-                return fighterId;
+          
             }
         } catch (SQLException ex) {
             Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
-        }     
-        return fighterId;
+        }   
+        fighter.setId(fighterId);
     }
 
     public int getFighterId(Fighter fighter) {

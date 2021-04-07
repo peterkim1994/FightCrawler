@@ -12,7 +12,16 @@ import java.time.LocalDate;
  * @author peter
  */
 public class UFCEvent {    
+    private int id;
     public String country;
     public LocalDate date;
     public String EventName;
+    
+    public void setId(int id){
+        this.id = id;
+    }
+    
+    public int getId(){
+        return id;
+    }
 }

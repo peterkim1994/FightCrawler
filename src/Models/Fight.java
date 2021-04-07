@@ -10,14 +10,21 @@ package Models;
  * @author peter
  */
 public class Fight {
-     public UFCEvent event;
-     public Fighter fighter1;
-     public Fighter fighter2;
-     public int weightClass;
+     public int eventId;
+     public int fighter1Id;
+     public int fighter2Id;
+     public String weightClass;
      public int rounds;
      public int durationSeconds;
      public int winner;
-     public Method method;
+     public String method;
      public Bonus bonus;
      public String gender;
+     
+     public Fight(int eventId){
+         this.eventId = eventId;
+         winner = 1;
+     }
+     
+     
 }

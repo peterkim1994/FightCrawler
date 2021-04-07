@@ -6,7 +6,7 @@
 package fightcrawler;
 
 import Models.Fighter;
-import TextPreprocessingUtils.Cleaner;
+import utils.Cleaner;
 import java.io.IOException;
 import java.time.format.DateTimeParseException;
 import org.jsoup.HttpStatusException;
@@ -27,7 +27,7 @@ public class FighterProfileScrapper {
         this.db = db;
     }
 
-    public int scrapeFighterProfile(String profileUrl) throws IOException {
+    public void scrapeFighterProfile(String profileUrl) throws IOException {
         Document profile = Jsoup.connect(profileUrl).get();
         Element name = profile.getElementsByClass("b-content__title-highlight").get(0);
         String fighterName = Cleaner.removeApostrophe(name.text());
@@ -51,7 +51,7 @@ public class FighterProfileScrapper {
         } catch (DateTimeParseException e) {
             throw new UnsupportedOperationException("DOB" + fighterName + " couldnt be found and lacked data");
         }
-        return db.insertFighter(fighter);
+        db.insertFighter(fighter);
     }
 
     public String getFighterCountry(Fighter fighter) {

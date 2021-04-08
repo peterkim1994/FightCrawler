@@ -5,6 +5,8 @@
  */
 package fightcrawler;
 
+import Models.Fight;
+import Models.FightStats;
 import Models.Fighter;
 import Models.UFCEvent;
 import java.sql.Connection;
@@ -35,7 +37,10 @@ public class DbSingleton {
 
     private PreparedStatement getFighter;
     private PreparedStatement insertFighter;
-
+    private PreparedStatement insertTotalStrikeStats;
+    private PreparedStatement checkFight;
+    private PreparedStatement insertFight;
+    
     public DbSingleton() throws SQLException {
         this.conn = DriverManager.getConnection(this.connString, user, password);
         this.initPrepedStatements();
@@ -45,16 +50,81 @@ public class DbSingleton {
         getEvent = this.conn.prepareStatement("SELECT * FROM ufc_event WHERE event_date = ?");
         insertEvent = this.conn.prepareStatement("INSERT INTO ufc_event (event_date, country,event_name) VALUES(?,?,?)");
         getFighter = this.conn.prepareStatement("SELECT * FROM fighters WHERE fighters.name = ?");
-        insertFighter = this.conn.prepareStatement("INSERT INTO fighters (name, stance, reach, weight, height, dob, country) VALUES(?,?,?,?,?,?,?)");
+        insertFighter = this.conn.prepareStatement("INSERT INTO fighters (name, stance, reach, weight, height, dob, country) VALUES(?,?,?,?,?,?,?)");              
+        checkFight = this.conn.prepareStatement("SELECT * FROM fights WHERE fighter1 = ? AND fighter2 = ? AND event = ?");
+        insertFight = this.conn.prepareStatement("INSERT INTO fights (event, fighter1, fighter 2, duration, winner, method, bonus, gender) VALUES (?,?,?,?,?,?,?,?)");
+        
+        
+        insertTotalStrikeStats = this.conn.prepareStatement(
+                "INSERT INTO fight_stats (fight, fighter, round, knockDowns, sig_strikes_attempted, sig_strikes_landed, sig_strike_acc,total_strikes_attempted, total_strikes_landed"
+                +"take_down_attempts, take_downs_landed, take_down_acc, sub_attempts, reversals, control_time VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)" 
+        );
+    
     }
-
-    public static void main(String[] args) {
+    
+    public int getFightId(Fight fight) {
         try {
-            DbSingleton x = new DbSingleton();
+            checkFight.setInt(1,fight.fighter1Id);
+            checkFight.setInt(2,fight.fighter2Id);
+            checkFight.setInt(3,fight.eventId);
+            ResultSet rs = checkFight.executeQuery();
+            if(rs.next()){
+                fight.setId(rs.getInt(1));
+                return fight.getId();
+            }            
         } catch (SQLException ex) {
             Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
         }
+        return 0;
     }
+    
+    public int insertFight(Fight fight){
+        int fightId = 0;
+        try {           
+            fightId = getFightId(fight);
+            if(fightId == 0){
+                insertFight.setInt(1,fight.eventId);
+                insertFight.setInt(2, fight.fighter1Id);
+                insertFight.setInt(3, fight.fighter2Id);
+                insertFight.setInt(4, fight.durationSeconds);
+                insertFight.setInt(5, fight.winner);
+                insertFight.setString(6, fight.method);
+                insertFight.setString(7, fight.bonus.toString());
+                insertFight.executeUpdate();
+                fight.setId(getFightId(fight));
+                fightId = fight.getId();
+            }
+        } catch (SQLException ex) {
+            Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return fightId;
+    }
+    
+    
+    public void insertTotalStrikeStats(FightStats stats){
+        try {
+            insertTotalStrikeStats.setInt(1, stats.fightId);
+            insertTotalStrikeStats.setInt(2, stats.fighterId);
+            insertTotalStrikeStats.setInt(3, stats.round);
+            insertTotalStrikeStats.setInt(4, stats.knockDowns);
+            insertTotalStrikeStats.setInt(5, stats.sigStrkAtmps);
+            insertTotalStrikeStats.setInt(6, stats.sigStrkLanded);
+            insertTotalStrikeStats.setInt(7, stats.sigStrkAcc);
+            insertTotalStrikeStats.setInt(8, stats.totalStrikesAtmps);
+            insertTotalStrikeStats.setInt(9, stats.totalStrikesLanded);
+            insertTotalStrikeStats.setInt(10, stats.takeDownAtmps);
+            insertTotalStrikeStats.setInt(11, stats.takeDownsLanded);
+            insertTotalStrikeStats.setInt(12, stats.takeDownAcc);
+            insertTotalStrikeStats.setInt(13, stats.reversals);
+            insertTotalStrikeStats.setInt(14, stats.controlTimeSecs);
+            insertTotalStrikeStats.executeUpdate();           
+            
+        } catch (SQLException ex) {
+            Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+    
 
     public void recordEvent(UFCEvent event) {
         int eventId = getEventId(event.date);
@@ -68,7 +138,7 @@ public class DbSingleton {
             } catch (SQLException ex) {
                 Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
             }
-        }  
+        }
         event.setId(eventId);
     }
 
@@ -85,11 +155,11 @@ public class DbSingleton {
                 insertFighter.setString(7, fighter.country);
                 insertFighter.executeUpdate();
                 fighterId = getFighterId(fighter);
-          
+
             }
         } catch (SQLException ex) {
             Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
-        }   
+        }
         fighter.setId(fighterId);
     }
 

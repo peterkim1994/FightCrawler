@@ -69,7 +69,7 @@ public class EventCrawler {
     }
 
     //crawls a single event
-    public void scrapeEventPage(String url, boolean isPreviousEvent) throws IOException {//num attendence vs num fights to scrape  
+    public void scrapeEventPage(String url, boolean isPreviousEvent) throws IOException{//num attendence vs num fights to scrape  
         url = "http://www.ufcstats.com/event-details/805ad1801eb26abb";
         Document eventPage = Jsoup.connect(url).get();
         Elements eventDetails = eventPage.getElementsByClass("b-list__box-list-item");
@@ -88,6 +88,8 @@ public class EventCrawler {
             if (i <= numChampionFights) {
                 eventFight.rounds = 5;
                 numChampionFights--;
+            }else{
+                eventFight.rounds = 3;
             }
             String fightLink = fight.attr("data-link");
             Element fightRow = eventPage.getElementsByClass("b-fight-details__table-row b-fight-details__table-row__hover js-fight-details-click").get(i);
@@ -95,11 +97,10 @@ public class EventCrawler {
             eventFight.method = cols.get(cols.size() - 4).text().trim();
      //       System.out.println("\n !! eventFight.method = " + eventFight.method);
             eventFight.weightClass = cols.get(cols.size() - 5).ownText().trim();
-    //        System.out.println(eventFight.weightClass);
+
             Elements fighters = fight.getElementsByClass("b-link b-link_style_black");
-//            String fighterUrl1 = fighters.get(0).attr("href");
-//            String fighterUrl2 = fighters.get(1).attr("href");
-            fightScrapper.scrapeFight(fightLink, event);
+            
+            fightScrapper.scrapeFight(fightLink, eventFight);
         }
 
     }

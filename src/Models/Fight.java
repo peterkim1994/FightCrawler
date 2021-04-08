@@ -10,6 +10,7 @@ package Models;
  * @author peter
  */
 public class Fight {
+     private int id;
      public int eventId;
      public int fighter1Id;
      public int fighter2Id;
@@ -25,6 +26,19 @@ public class Fight {
          this.eventId = eventId;
          winner = 1;
      }
+     
+     public int getId() {
+         return id;
+     }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Override
+    public String toString() {
+        return "Fight{" + "eventId=" + eventId + ", fighter1Id=" + fighter1Id + ", fighter2Id=" + fighter2Id + ", weightClass=" + weightClass + ", rounds=" + rounds + ", durationSeconds=" + durationSeconds + ", winner=" + winner + ", method=" + method + ", bonus=" + bonus + ", gender=" + gender + '}';
+    }
      
      
 }

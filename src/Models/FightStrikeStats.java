@@ -10,8 +10,8 @@ package Models;
  * @author peter
  */
 public class FightStrikeStats {
-    public Fight fight;
-    public Fighter fighter;
+    public int fightId;
+    public int fighterId;
     public int round;
     public int head;
     public int headLanded;
@@ -25,4 +25,11 @@ public class FightStrikeStats {
     public int clinchLanded;
     public int ground;
     public int groundLanded;
+
+    @Override
+    public String toString() {
+        return "FightStrikeStats{" + "fight=" + fightId + ", fighter=" + fighterId + ", round=" + round + ", head=" + head + ", headLanded=" + headLanded + ", body=" + body + ", bodyLanded=" + bodyLanded + ", leg=" + leg + ", leg_landed=" + leg_landed + ", distance=" + distance + ", distanceLanded=" + distanceLanded + ", clinch=" + clinch + ", clinchLanded=" + clinchLanded + ", ground=" + ground + ", groundLanded=" + groundLanded + '}';
+    }
+    
+    
 }

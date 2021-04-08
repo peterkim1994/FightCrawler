@@ -5,15 +5,21 @@
  */
 package fightcrawler;
 
+import Models.Bonus;
 import Models.Fight;
+import Models.FightStats;
+import Models.FightStrikeStats;
 import Models.Fighter;
 import Models.UFCEvent;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import utils.Cleaner;
 import utils.devUtils;
 
 /**
@@ -33,41 +39,161 @@ public class FightCrawler {
         this.fightScrapper = fightScrapper;
     }
 
-    public void scrapeFight(String fightUrl, UFCEvent event) {
+    public void scrapeFight(String fightUrl, Fight fight) {
         try {
             Document page = Jsoup.connect(fightUrl).get();
-            Elements fighterDetails = page.getElementsByClass("b-fight-details__person");  
-            
-            Fighter fighter1 = scrapeFighter(fighterDetails, true);                       
-            Fighter fighter2 = scrapeFighter(fighterDetails, false);         
-            
-            Fight fight = new Fight(event.getId());
+            Elements fighterDetails = page.getElementsByClass("b-fight-details__person");
+            Fighter fighter1 = scrapeFighter(fighterDetails, true);
+            Fighter fighter2 = scrapeFighter(fighterDetails, false);
+            fight.fighter1Id =  db.getFighterId(fighter1);
+            fight.fighter2Id =  db.getFighterId(fighter2);
+           
+            if(db.getFightId(fight) != 0){
+                return;
+            }            
+
             String fighter1Outcome = fighterDetails.get(0).getElementsByClass("b-fight-details__person-status").text();
-            assignFightOutcome(fighter1Outcome, fight);
-
-//            /b-fight-details__label
+            assignFightOutcome(fighter1Outcome, fight); //set fight objects outcome attribute state
             String infoHeader = page.getElementsByClass("b-fight-details__fight-title").get(0).text().trim();
-            String gender = (infoHeader.contains("Women")) ? "female" : "male";
-
+            fight.gender = (infoHeader.contains("Women")) ? "female" : "male";
             Elements fightInfo = page.getElementsByClass("b-fight-details__text-item");
-            String method = fightInfo.get(0).nextElementSibling().outerHtml();
-//            String round =   fightInfo.get(1).nextElementSibling().outerHtml();
-       //     String time = fightInfo.get(2).nextElementSibling().outerHtml();
-            System.out.println(method + " " ); //+ round +  " " + time);
-            devUtils.printElmOwnText(fightInfo);
+            fight.durationSeconds = getFightDuration(fightInfo);
+            
+            System.out.println(fight);
+           // db.insertFight(fight);
+            
+            int totalRounds = Integer.parseInt(fightInfo.get(0).ownText().trim());
+            Elements fightStatTables = page.getElementsByClass("b-fight-details__table js-fight-table");
+            
+            Elements totalStrikes = fightStatTables.get(0).getElementsByClass("b-fight-details__table-row");
+            Elements strikesByTarget = fightStatTables.get(1).getElementsByClass("b-fight-details__table-row");
+            // removing table header
+            fightStatTables.remove(0);
+            totalStrikes.remove(0);
+            strikesByTarget.remove(0);
+                    
+            for (int columnNum = 0; columnNum < totalRounds; columnNum++) {
+                totalStrikes.remove(0);//removing irelevant rows     
+                strikesByTarget.remove(0);
+                int round = columnNum +1;
+                Element totalFigs = totalStrikes.get(columnNum);     
+                Element targetFigs = strikesByTarget.get(columnNum);
+                extractTotalStrikeStats(totalFigs, fight.getId(), fight.fighter1Id, true, round);
+                extractTotalStrikeStats(totalFigs, fight.getId(), fight.fighter2Id, false, round);
+                extractStrikesByTarget(targetFigs, fight.getId(), fight.fighter1Id, true, round);
+                extractStrikesByTarget(targetFigs, fight.getId(), fight.fighter2Id, false, round);
+            }
 
         } catch (IOException ex) {
             Logger.getLogger(EventCrawler.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
+    public void extractTotalStrikeStats(
+            Element roundTotalStrikes,
+            int fightEventId,
+            int fighterId,
+            boolean redGloves,
+            int round
+    ) {
+        //                 
+        Elements cols = roundTotalStrikes.getElementsByClass("b-fight-details__table-text");
+        // removing fighterNames from table data
+        cols.remove(0);
+        cols.remove(0);
+
+        FightStats fightStats = new FightStats();
+        fightStats.fightId = fightEventId;
+        fightStats.fighterId = fighterId;
+        fightStats.round = round;
+
+        int ithCol = (redGloves) ? 1 : 0; // every ith col is not needed depending on if its fighter 1 or 2
+        int totalCols = cols.size();
+        for (int i = 0; i < totalCols / 2; i++) {
+            cols.remove(i + ithCol); 
+        }
+
+        fightStats.knockDowns = Integer.parseInt(cols.get(0).text());
+        String sigStrikes = cols.get(1).text();
+        fightStats.sigStrkAtmps = getAttempted(sigStrikes);
+        fightStats.sigStrkLanded = getLanded(sigStrikes);
+
+        fightStats.calcSigStrikeAcc();
+
+        String totalStrikes = cols.get(3).text();
+        fightStats.totalStrikesAtmps = getAttempted(totalStrikes);
+        fightStats.totalStrikesLanded = getLanded(totalStrikes);
+
+        String takeDowns = cols.get(4).text();
+        fightStats.takeDownAtmps = getAttempted(takeDowns);
+        fightStats.takeDownsLanded = getLanded(takeDowns);
+        fightStats.calcTakeDownAcc();
+
+        fightStats.subAtmps = Cleaner.parseInt(cols.get(6));
+        fightStats.reversals = Cleaner.parseInt(cols.get(7));
+        fightStats.controlTimeSecs = getTotalSeconds(cols.get(8).text());
+        System.out.println(fightStats);        
+        
+    }
+
+    public void extractStrikesByTarget(
+            Element targets,
+            int fightEventId,
+            int fighterId,
+            boolean redGloves,
+            int round
+    ) {
+        Elements cols = targets.getElementsByClass("b-fight-details__table-text");
+        // removing name column
+        cols.remove(0);
+        cols.remove(0);
+        
+        FightStrikeStats strikeTargets = new FightStrikeStats();
+        strikeTargets.fightId = fightEventId;
+        strikeTargets.fighterId = fighterId;
+        strikeTargets.round = round;
+
+        int ithCol = (redGloves) ? 1 : 0; // every ith col is not needed depending on if its fighter 1 or 2
+        int totalCols = cols.size();
+        for (int i = 0; i < totalCols / 2; i++) {
+            cols.remove(i + ithCol);
+        }
+        String headStrikes = cols.get(2).text();
+        strikeTargets.head = getAttempted(headStrikes);
+        strikeTargets.headLanded = getLanded(headStrikes);
+        
+        String bodyStrikes = cols.get(3).text();
+        strikeTargets.body = getAttempted(bodyStrikes);
+        strikeTargets.bodyLanded = getLanded(bodyStrikes);
+        
+        String legStrikes = cols.get(4).text();
+        strikeTargets.leg = getAttempted(legStrikes);
+        strikeTargets.leg_landed = getLanded(legStrikes);
+        
+        String distanceStrikes = cols.get(5).text();
+        strikeTargets.distance = getAttempted(distanceStrikes);
+        strikeTargets.distanceLanded = getLanded(distanceStrikes);
+        
+        String clinchStrikes = cols.get(6).text();
+        strikeTargets.clinch = getAttempted(clinchStrikes);
+        strikeTargets.clinchLanded = getLanded(clinchStrikes);
+        
+        String groundStrikes = cols.get(7).text();
+        strikeTargets.ground = getAttempted(groundStrikes);
+        strikeTargets.groundLanded = getLanded(groundStrikes);
+        
+        
+        System.out.println(strikeTargets);
+        
+    }
+
     public Fighter scrapeFighter(Elements fighterHeaders, boolean redGloves) throws IOException {
         int index = (redGloves) ? 0 : 1;
         String fighterName = fighterHeaders.get(index).getElementsByClass("b-fight-details__person-name").text().trim();
-        String fighterProfileLink = fighterHeaders.get(index).getElementsByClass("b-link b-fight-details__person-link").get(0).attr("href");      
+        String fighterProfileLink = fighterHeaders.get(index).getElementsByClass("b-link b-fight-details__person-link").get(0).attr("href");
         System.out.println(fighterProfileLink);
         Fighter fighter = new Fighter(fighterName);
-        fightScrapper.scrapeFighterProfile(fighterProfileLink);        
+        fightScrapper.scrapeFighterProfile(fighterProfileLink);
         System.out.println("\n" + fighterName + " " + fighterProfileLink + "\n");
         return fighter;
     }
@@ -85,12 +211,35 @@ public class FightCrawler {
     public void checkForBonus(Elements fighterDetails, Fight fight) {
         String rawHtml = fighterDetails.get(0).getElementsByClass("b-fight-details__fight-title").outerHtml();
         if (rawHtml.contains("rackcdn.com/perf.png")) {
-
+            fight.bonus = Bonus.PON;
         } else if (rawHtml.contains("rackcdn.com/fight.png")) {
-
+           fight.bonus = Bonus.FON;
         } else {
 
         }
+    }
+
+    public int getFightDuration(Elements fightInfo) {
+        int rounds = Integer.parseInt(fightInfo.get(0).ownText().trim());
+        String time = fightInfo.get(1).ownText();
+        int secondsInLastRound = getTotalSeconds(time);
+        int totalSeconds = (60 * (rounds - 1)) + secondsInLastRound;
+        return totalSeconds;
+    }
+
+    public int getTotalSeconds(String time) {
+        int mins = Integer.parseInt(Cleaner.splitThenExtract(time, ":", 0));
+        int seconds = Integer.parseInt(Cleaner.splitThenExtract(time, ":", 1));
+        int totalSeconds = (mins * 60) + seconds;
+        return totalSeconds;
+    }
+
+    public static int getAttempted(String figure) {
+        return Integer.parseInt(Cleaner.splitThenExtract(figure, " ", 2));
+    }
+
+    public static int getLanded(String figure) {        
+        return Integer.parseInt(Cleaner.splitThenExtract(figure, " ", 0));
     }
 
 }

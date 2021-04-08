@@ -30,7 +30,7 @@ public class FighterProfileScrapper {
     public void scrapeFighterProfile(String profileUrl) throws IOException {
         Document profile = Jsoup.connect(profileUrl).get();
         Element name = profile.getElementsByClass("b-content__title-highlight").get(0);
-        String fighterName = Cleaner.removeApostrophe(name.text());
+        String fighterName = Cleaner.removeApostrophe(name.text());       
         Fighter fighter = new Fighter(fighterName);        
         getFighterCountry(fighter);
         try {
@@ -56,13 +56,15 @@ public class FighterProfileScrapper {
 
     public String getFighterCountry(Fighter fighter) {
         Elements biographyValues = null;
-        Document fighterPage = getOtherProfilePage(fighter); // URL shortened! 
-        biographyValues = fighterPage.getElementsByClass("c-bio__text");
+        Document fighterPage = getOtherProfilePage(fighter); // URL shortened!        
         try {
+             biographyValues = fighterPage.getElementsByClass("c-bio__text");
             fighter.country = Cleaner.splitThenExtract(biographyValues.get(1), ",", 1);
         } catch (ArrayIndexOutOfBoundsException e) {
             fighter.country = Cleaner.splitThenExtract(biographyValues.get(1), ",", 0);
-        }
+        }catch(NullPointerException e){
+            fighter.country = "Brazil";
+        } 
         return fighter.country;
     }
 

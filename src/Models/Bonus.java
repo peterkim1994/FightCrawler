@@ -10,5 +10,5 @@ package Models;
  * @author peter
  */
 public enum Bonus {
-    PON,FON,SON,KON;
+    NONE,PON,FON,SON,KON;
 }

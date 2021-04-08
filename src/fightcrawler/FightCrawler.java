@@ -43,15 +43,17 @@ public class FightCrawler {
         try {
             Document page = Jsoup.connect(fightUrl).get();
             Elements fighterDetails = page.getElementsByClass("b-fight-details__person");
+            checkForBonus( fighterDetails, fight);
             Fighter fighter1 = scrapeFighter(fighterDetails, true);
             Fighter fighter2 = scrapeFighter(fighterDetails, false);
             fight.fighter1Id =  db.getFighterId(fighter1);
             fight.fighter2Id =  db.getFighterId(fighter2);
-           
+            
+            System.out.println("scraping fight :" + fighter1.name + "-" + fighter1.getId() + " vs " + fighter2.name + "-" + fighter2.getId());
             if(db.getFightId(fight) != 0){
                 return;
-            }            
-
+            } 
+            
             String fighter1Outcome = fighterDetails.get(0).getElementsByClass("b-fight-details__person-status").text();
             assignFightOutcome(fighter1Outcome, fight); //set fight objects outcome attribute state
             String infoHeader = page.getElementsByClass("b-fight-details__fight-title").get(0).text().trim();
@@ -60,7 +62,7 @@ public class FightCrawler {
             fight.durationSeconds = getFightDuration(fightInfo);
             
             System.out.println(fight);
-           // db.insertFight(fight);
+            db.insertFight(fight);
             
             int totalRounds = Integer.parseInt(fightInfo.get(0).ownText().trim());
             Elements fightStatTables = page.getElementsByClass("b-fight-details__table js-fight-table");
@@ -70,8 +72,7 @@ public class FightCrawler {
             // removing table header
             fightStatTables.remove(0);
             totalStrikes.remove(0);
-            strikesByTarget.remove(0);
-                    
+            strikesByTarget.remove(0);                    
             for (int columnNum = 0; columnNum < totalRounds; columnNum++) {
                 totalStrikes.remove(0);//removing irelevant rows     
                 strikesByTarget.remove(0);
@@ -83,7 +84,7 @@ public class FightCrawler {
                 extractStrikesByTarget(targetFigs, fight.getId(), fight.fighter1Id, true, round);
                 extractStrikesByTarget(targetFigs, fight.getId(), fight.fighter2Id, false, round);
             }
-
+            
         } catch (IOException ex) {
             Logger.getLogger(EventCrawler.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -132,8 +133,8 @@ public class FightCrawler {
         fightStats.subAtmps = Cleaner.parseInt(cols.get(6));
         fightStats.reversals = Cleaner.parseInt(cols.get(7));
         fightStats.controlTimeSecs = getTotalSeconds(cols.get(8).text());
-        System.out.println(fightStats);        
-        
+       // System.out.println(fightStats);        
+        db.insertTotalStrikeStats(fightStats);
     }
 
     public void extractStrikesByTarget(
@@ -180,21 +181,20 @@ public class FightCrawler {
         
         String groundStrikes = cols.get(7).text();
         strikeTargets.ground = getAttempted(groundStrikes);
-        strikeTargets.groundLanded = getLanded(groundStrikes);
-        
-        
-        System.out.println(strikeTargets);
-        
+        strikeTargets.groundLanded = getLanded(groundStrikes);        
+        db.insertStrikeTargetStats(strikeTargets);
+    //    System.out.println(strikeTargets);        
     }
 
     public Fighter scrapeFighter(Elements fighterHeaders, boolean redGloves) throws IOException {
         int index = (redGloves) ? 0 : 1;
         String fighterName = fighterHeaders.get(index).getElementsByClass("b-fight-details__person-name").text().trim();
+        fighterName = Cleaner.removeApostrophe(fighterName);
         String fighterProfileLink = fighterHeaders.get(index).getElementsByClass("b-link b-fight-details__person-link").get(0).attr("href");
-        System.out.println(fighterProfileLink);
+   //     System.out.println(fighterProfileLink);
         Fighter fighter = new Fighter(fighterName);
-        fightScrapper.scrapeFighterProfile(fighterProfileLink);
-        System.out.println("\n" + fighterName + " " + fighterProfileLink + "\n");
+        fightScrapper.scrapeFighterProfile(fighterProfileLink);   
+        fighter.setId(db.getFighterId(fighter));
         return fighter;
     }
 
@@ -203,8 +203,10 @@ public class FightCrawler {
             fight.winner = 1;
         } else if (fighter1Outcome.contains("L")) {
             fight.winner = 2;
-        } else {
+        } else if(fighter1Outcome.contains("D")) {
             fight.winner = 0;
+        }else{ // DQ/No-Contest
+            fight.winner = -1;
         }
     }
 
@@ -214,8 +216,13 @@ public class FightCrawler {
             fight.bonus = Bonus.PON;
         } else if (rawHtml.contains("rackcdn.com/fight.png")) {
            fight.bonus = Bonus.FON;
-        } else {
-
+        } else if (rawHtml.contains("rackcdn.com/sub.png")){
+            fight.bonus = Bonus.SON;
+        }else if(rawHtml.contains("rackcdn.com/ko.png")){
+            fight.bonus = Bonus.KON;
+        }
+        else {
+            fight.bonus = Bonus.NONE;
         }
     }
 
@@ -223,7 +230,7 @@ public class FightCrawler {
         int rounds = Integer.parseInt(fightInfo.get(0).ownText().trim());
         String time = fightInfo.get(1).ownText();
         int secondsInLastRound = getTotalSeconds(time);
-        int totalSeconds = (60 * (rounds - 1)) + secondsInLastRound;
+        int totalSeconds = (300 * (rounds - 1)) + secondsInLastRound;
         return totalSeconds;
     }
 

@@ -70,9 +70,10 @@ public class EventCrawler {
 
     //crawls a single event
     public void scrapeEventPage(String url, boolean isPreviousEvent) throws IOException{//num attendence vs num fights to scrape  
-        url = "http://www.ufcstats.com/event-details/805ad1801eb26abb";
+       // url = "http://www.ufcstats.com/event-details/805ad1801eb26abb";
         Document eventPage = Jsoup.connect(url).get();
         Elements eventDetails = eventPage.getElementsByClass("b-list__box-list-item");
+        
         UFCEvent event = new UFCEvent();
         getEventDetails(eventDetails, eventPage, event);
 
@@ -95,7 +96,6 @@ public class EventCrawler {
             Element fightRow = eventPage.getElementsByClass("b-fight-details__table-row b-fight-details__table-row__hover js-fight-details-click").get(i);
             Elements cols = fightRow.getElementsByClass("b-fight-details__table-text");
             eventFight.method = cols.get(cols.size() - 4).text().trim();
-     //       System.out.println("\n !! eventFight.method = " + eventFight.method);
             eventFight.weightClass = cols.get(cols.size() - 5).ownText().trim();
 
             Elements fighters = fight.getElementsByClass("b-link b-link_style_black");

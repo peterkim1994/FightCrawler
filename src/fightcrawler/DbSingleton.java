@@ -26,9 +26,9 @@ import java.util.logging.Logger;
  */
 public class DbSingleton {
 
-    private final String user = "root";
-    private final String password = "password";
-    private final String connString = "jdbc:mysql://localhost:3306/ufc_store";
+    private final String user = "LAPTOP-UT8CE0A8\\peter"; // "root";
+    private final String password = "";
+    private final String connString = "jdbc:sqlserver://localhost;databaseName=ufc;user=peterk;password=p;";//integratedSecurity=true;authenticationScheme=JavaKerberos;";
 //    db_driver   = com.mysql.jdbc.Driver;
     private DbSingleton db;
     private Connection conn;
@@ -36,6 +36,7 @@ public class DbSingleton {
     private PreparedStatement getEvent;
     private PreparedStatement insertEvent;
 
+    private PreparedStatement getFighterByName;
     private PreparedStatement getFighter;
     private PreparedStatement insertFighter;
     private PreparedStatement insertTotalStrikeStats;
@@ -44,11 +45,14 @@ public class DbSingleton {
     private PreparedStatement insertFight;
     
     public DbSingleton() throws SQLException {
-        this.conn = DriverManager.getConnection(this.connString, user, password);
-        this.initPrepedStatements();
+          //  Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+            this.conn = DriverManager.getConnection(this.connString);
+            this.initPrepedStatements();
+        
     }
 
     public void initPrepedStatements() throws SQLException {
+        getFighterByName = this.conn.prepareStatement("SELECT * FROM fighters WHERE name = ?");
         getEvent = this.conn.prepareStatement("SELECT * FROM ufc_event WHERE event_date = ?");
         insertEvent = this.conn.prepareStatement("INSERT INTO ufc_event (event_date, country,event_name) VALUES(?,?,?)");
         getFighter = this.conn.prepareStatement("SELECT * FROM fighters WHERE fighters.name = ?");
@@ -67,6 +71,19 @@ public class DbSingleton {
                 +",take_down_attempts, take_downs_landed, take_down_acc, sub_attempts, reversals, control_time) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)" 
         );
     
+    }
+    
+    public int getFighterByName(String name){
+         try {
+            getFighterByName.setString(1, name);
+            ResultSet rs = getFighterByName.executeQuery();
+            if(rs.next()){
+              return rs.getInt(1);
+            }            
+        } catch (SQLException ex) {
+            Logger.getLogger(DbSingleton.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return 0;
     }
     
     public int getFightId(Fight fight) {

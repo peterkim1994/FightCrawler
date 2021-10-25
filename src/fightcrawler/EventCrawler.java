@@ -20,6 +20,7 @@ import org.jsoup.select.Elements;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import utils.devUtils;
@@ -46,7 +47,13 @@ public class EventCrawler {
 
     public static void main(String[] args) {
         EventCrawler crawler = new EventCrawler();
-        crawler.scrapeEvent(1);
+       // crawler.scrapeEvent(3);
+     //   crawler.scrapeEvent(4);
+        for (int i=1; i<=1; i++){
+            crawler.scrapeEvent(i);
+          //  Scanner s = new Scanner(System.in);     
+        //    System.out.println("Scrape next page?:");
+        }
     }
 
     public void scrapeEvent(int page) {
@@ -59,8 +66,11 @@ public class EventCrawler {
             String url = "http://www.ufcstats.com/statistics/events/completed?page=" + page;
             Document eventsPage = Jsoup.connect(url).get(); // URL shortened!
             Elements names = eventsPage.getElementsByClass("b-link b-link_style_black");
-            for (Element name : names) {
-                scrapeEventPage(name.attr("href"), true);
+            int x = 0;
+            for (Element name : names) {     
+                  x++;
+                  if(x!=1 && page ==1)
+                    scrapeEventPage(name.attr("href"), true);        
             }
 
         } catch (IOException ex) {
@@ -98,8 +108,7 @@ public class EventCrawler {
             eventFight.method = cols.get(cols.size() - 4).text().trim();
             eventFight.weightClass = cols.get(cols.size() - 5).ownText().trim();
 
-            Elements fighters = fight.getElementsByClass("b-link b-link_style_black");
-            
+            Elements fighters = fight.getElementsByClass("b-link b-link_style_black");            
             fightScrapper.scrapeFight(fightLink, eventFight);
         }
 

@@ -9,6 +9,7 @@ import Models.Fighter;
 import utils.Cleaner;
 import java.io.IOException;
 import java.time.format.DateTimeParseException;
+import java.util.Scanner;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -27,27 +28,36 @@ public class FighterProfileScrapper {
         this.db = db;
     }
 
-    public void scrapeFighterProfile(String profileUrl) throws IOException {
+    public void scrapeFighterProfile(String profileUrl) throws IOException, NullPointerException {
         Document profile = Jsoup.connect(profileUrl).get();
         Element name = profile.getElementsByClass("b-content__title-highlight").get(0);
-        String fighterName = Cleaner.removeApostrophe(name.text());       
-        Fighter fighter = new Fighter(fighterName);        
+        String fighterName = Cleaner.removeApostrophe(name.text());
+        Fighter fighter = new Fighter(fighterName);
         getFighterCountry(fighter);
         try {
-            Elements statVals = profile.getElementsByClass("b-list__box-list-item b-list__box-list-item_type_block");        
+            Elements statVals = profile.getElementsByClass("b-list__box-list-item b-list__box-list-item_type_block");
             String height = statVals.get(0).ownText();
-            int feet = Cleaner.parseInt(Cleaner.splitThenExtract(height," ",0));
-            int inches = Cleaner.parseInt(Cleaner.splitThenExtract(height," ",1));
-            fighter.height = (int) (2.54 * ((feet * 12) + inches));            
-            String weight = Cleaner.splitThenExtract(statVals.get(1).ownText()," ", 0);
-            fighter.weight = Cleaner.parseInt(weight);     
-            fighter.DOB = Cleaner.reformatDate(statVals.get(3).ownText()).getYear();            
-            Elements statVals2 = profile.getElementsByClass("b-list__box-list-item  b-list__box-list-item_type_block"); 
-            fighter.stance = statVals2.get(0).ownText().trim();     
+            int feet = Cleaner.parseInt(Cleaner.splitThenExtract(height, " ", 0));
+            int inches = Cleaner.parseInt(Cleaner.splitThenExtract(height, " ", 1));
+            fighter.height = (int) (2.54 * ((feet * 12) + inches));
+            String weight = Cleaner.splitThenExtract(statVals.get(1).ownText(), " ", 0);
+            fighter.weight = Cleaner.parseInt(weight);
+            fighter.DOB = Cleaner.reformatDate(statVals.get(3).ownText()).getYear();
+            Elements statVals2 = profile.getElementsByClass("b-list__box-list-item  b-list__box-list-item_type_block");
+            fighter.stance = statVals2.get(0).ownText().trim();
             fighter.reach = (int) (2.54 * Cleaner.parseInt(statVals.get(2)));
         } catch (NumberFormatException e) {
             System.out.println("scraping other website for " + fighter.name);
-            scrapeReachFromOtherWebsite(fighter);
+            if (fighter.name.equalsIgnoreCase("chan-mi jeon")) {
+                fighter.reach = (int) (2.54 * 67);
+            } else {
+                try {
+                    scrapeReachFromOtherWebsite(fighter);
+                } catch (NullPointerException ex) {
+                    throw new UnsupportedOperationException(fighterName + " couldnt be scrapped, fight will not be scrapped");
+                }
+            }
+
         } catch (DateTimeParseException e) {
             throw new UnsupportedOperationException("DOB" + fighterName + " couldnt be found and lacked data");
         }
@@ -58,13 +68,19 @@ public class FighterProfileScrapper {
         Elements biographyValues = null;
         Document fighterPage = getOtherProfilePage(fighter); // URL shortened!        
         try {
-             biographyValues = fighterPage.getElementsByClass("c-bio__text");
+            System.out.println("SCRAPING " + fighter.name);
+            biographyValues = fighterPage.getElementsByClass("c-bio__text");
             fighter.country = Cleaner.splitThenExtract(biographyValues.get(1), ",", 1);
         } catch (ArrayIndexOutOfBoundsException e) {
             fighter.country = Cleaner.splitThenExtract(biographyValues.get(1), ",", 0);
-        }catch(NullPointerException e){
+        } catch (NullPointerException e) {
             fighter.country = "Brazil";
-        } 
+        } catch (IndexOutOfBoundsException e) {
+            biographyValues = fighterPage.getElementsByClass("country");
+            fighter.country = biographyValues.get(0).text();
+            System.out.println(fighter.country);
+
+        }
         return fighter.country;
     }
 
@@ -79,16 +95,21 @@ public class FighterProfileScrapper {
         return null;
     }
 
-    public void scrapeReachFromOtherWebsite(Fighter fighter) {
+    public void scrapeReachFromOtherWebsite(Fighter fighter) throws NullPointerException {
         Document fighterPage = getOtherProfilePage(fighter);
-        Elements biographyLabels = fighterPage.getElementsByClass("c-bio__label");
+        Elements biographyLabels = null;
+        try {
+            biographyLabels = fighterPage.getElementsByClass("c-bio__label");
+        } catch (NullPointerException e) {
+            throw new NullPointerException();
+        }
         Elements biographyValues = fighterPage.getElementsByClass("c-bio__text");
         for (int i = 0; i < biographyValues.size(); i++) {
             String label = biographyLabels.get(i).text().trim();
             String value = biographyValues.get(i).text().trim();
             if (label.contains("Reach") && !label.contains("LEG REACH")) {
-                fighter.reach = (int) (2.54 * Integer.parseInt(value));
-                System.out.println(fighter.name + "  has reach" + fighter.reach);          
+                fighter.reach = (int) (2.54 * Double.parseDouble(value));
+                System.out.println(fighter.name + "  has reach" + fighter.reach);
                 return;
             } else {
                 continue;

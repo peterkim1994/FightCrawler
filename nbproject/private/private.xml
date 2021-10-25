@@ -9,9 +9,12 @@
             <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/Models/FightStats.java</file>
             <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/Models/UFCEvent.java</file>
             <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/Models/Method.java</file>
+            <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/fightcrawler/DbSingleton.java</file>
             <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/Models/Bonus.java</file>
+            <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/fightcrawler/FightCrawler.java</file>
+            <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/utils/Cleaner.java</file>
             <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/fightcrawler/EventCrawler.java</file>
-            <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/Models/Fight.java</file>
+            <file>file:/C:/Users/peter/Documents/NetBeansProjects/FightCrawler/src/fightcrawler/FighterProfileScrapper.java</file>
         </group>
     </open-files>
 </project-private>

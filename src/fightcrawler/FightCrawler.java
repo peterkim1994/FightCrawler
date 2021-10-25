@@ -29,7 +29,7 @@ import utils.devUtils;
 public class FightCrawler {
 
     /**
-     * @param args the command line arguments
+     * Izzy vs COSTA for cut off for bonuses
      */
     private DbSingleton db;
     private FighterProfileScrapper fightScrapper;
@@ -42,8 +42,8 @@ public class FightCrawler {
     public void scrapeFight(String fightUrl, Fight fight) {
         try {
             Document page = Jsoup.connect(fightUrl).get();
-            Elements fighterDetails = page.getElementsByClass("b-fight-details__person");
-            checkForBonus( fighterDetails, fight);
+            Elements fighterDetails = page.getElementsByClass("b-fight-details__person");            
+            
             Fighter fighter1 = scrapeFighter(fighterDetails, true);
             Fighter fighter2 = scrapeFighter(fighterDetails, false);
             fight.fighter1Id =  db.getFighterId(fighter1);
@@ -57,6 +57,7 @@ public class FightCrawler {
             String fighter1Outcome = fighterDetails.get(0).getElementsByClass("b-fight-details__person-status").text();
             assignFightOutcome(fighter1Outcome, fight); //set fight objects outcome attribute state
             String infoHeader = page.getElementsByClass("b-fight-details__fight-title").get(0).text().trim();
+            checkForBonus( page.getElementsByClass("b-fight-details__fight-title"), fight);
             fight.gender = (infoHeader.contains("Women")) ? "female" : "male";
             Elements fightInfo = page.getElementsByClass("b-fight-details__text-item");
             fight.durationSeconds = getFightDuration(fightInfo);
@@ -87,6 +88,8 @@ public class FightCrawler {
             
         } catch (IOException ex) {
             Logger.getLogger(EventCrawler.class.getName()).log(Level.SEVERE, null, ex);
+        }catch(UnsupportedOperationException e){
+            System.err.println("fight not scrapped");
         }
     }
 
@@ -186,15 +189,20 @@ public class FightCrawler {
     //    System.out.println(strikeTargets);        
     }
 
-    public Fighter scrapeFighter(Elements fighterHeaders, boolean redGloves) throws IOException {
+    public Fighter scrapeFighter(Elements fighterHeaders, boolean redGloves) throws IOException, UnsupportedOperationException {
         int index = (redGloves) ? 0 : 1;
         String fighterName = fighterHeaders.get(index).getElementsByClass("b-fight-details__person-name").text().trim();
         fighterName = Cleaner.removeApostrophe(fighterName);
         String fighterProfileLink = fighterHeaders.get(index).getElementsByClass("b-link b-fight-details__person-link").get(0).attr("href");
    //     System.out.println(fighterProfileLink);
         Fighter fighter = new Fighter(fighterName);
-        fightScrapper.scrapeFighterProfile(fighterProfileLink);   
-        fighter.setId(db.getFighterId(fighter));
+        int fighterId = db.getFighterByName(fighterName);
+        if( fighterId == 0){
+            fightScrapper.scrapeFighterProfile(fighterProfileLink);  
+            fighter.setId(db.getFighterId(fighter));
+        }else{
+            fighter.setId(fighterId);
+        }        
         return fighter;
     }
 
